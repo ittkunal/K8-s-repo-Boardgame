@@ -11,13 +11,13 @@ pipeline {
 
     stages {
 
-        stage("Clone Code From GitHub") {
+        stage("checkout") {
             steps {
                 git url: 'https://github.com/ittkunal/K8-s-repo-Boardgame.git', branch: 'main'
             }
         }
 
-        stage("Static Code Analysis (SonarQube)") {
+        stage("Static Code Analysis") {
             steps {
                 withSonarQubeEnv('Sonar') {
                     sh """
@@ -38,13 +38,13 @@ pipeline {
             }
         }
 
-        stage("Build with Maven") {
+        stage("Maven Build") {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage("Authenticate to ECR") {
+        stage("ECR login") {
             steps {
                 sh """
                     aws ecr get-login-password --region ${AWS_REGION} | \
@@ -59,7 +59,7 @@ pipeline {
             }
         }
 
-        stage("Scan Docker Image (Trivy)") {
+        stage("Trivy Scan") {
             steps {
                 sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_NAME}"
             }
