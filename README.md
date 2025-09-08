@@ -11,14 +11,6 @@ This project demonstrates a complete CI/CD pipeline using **Jenkins** to build, 
 - [Pipeline Steps](#pipeline-steps)
 - [Project Structure](#project-structure)
 - [Jenkins Pipeline Details](#jenkins-pipeline-details)
-- [Kubernetes Manifests](#kubernetes-manifests)
-- [AWS ECR Setup](#aws-ecr-setup)
-- [Kubernetes Setup](#kubernetes-setup)
-- [Prerequisites](#prerequisites)
-- [How to Run the Pipeline](#how-to-run-the-pipeline)
-- [Accessing the Application](#accessing-the-application)
-- [Troubleshooting](#troubleshooting)
-
 ---
 
 ## Pipeline Steps
@@ -36,3 +28,41 @@ This project demonstrates a complete CI/CD pipeline using **Jenkins** to build, 
 ---
 
 ## Project Structure
+.
+├── Dockerfile
+├── Jenkinsfile
+├── k8s
+│ ├── deployment.yaml
+│ └── service.yaml
+├── README.md
+└── (application source code)
+
+
+---
+
+## Jenkins Pipeline Details
+
+### Jenkinsfile
+
+The pipeline is defined in the `Jenkinsfile` and performs the following:
+
+- **Checks out** the code from [GitHub](https://github.com/ittkunal/K8-s-repo-Boardgame.git)
+- **Runs SonarQube analysis** for static code checks
+- **Builds the application** using Maven
+- **Builds a Docker image** and tags it with `latest`
+- **Scans the Docker image** using Trivy for vulnerabilities
+- **Authenticates and pushes** the image to AWS ECR
+- **Deploys the application** to a Kubernetes cluster using `kubectl`
+
+#### Key Environment Variables
+
+- `ECR_REPO`: AWS ECR repository URI
+- `AWS_REGION`: AWS region for ECR
+- `IMAGE_NAME`: Full image name with tag
+- `KUBECONFIG`: Jenkins credential for Kubernetes access
+
+#### Credentials Required in Jenkins
+
+- **sonarqube-token**: Secret text (SonarQube token)
+- **aws-ecr-jenkins**: Username/Password (AWS Access Key ID/Secret)
+- **kube-creds**: Secret file (Kubeconfig for cluster access)
