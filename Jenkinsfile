@@ -1,31 +1,85 @@
 pipeline {
     agent any
-    
-    tools {
-        maven 'maven3.6'
-        jdk 'jdk17'
+
+    environment {
+        SONAR_HOME = tool "Sonar"
+        ECR_REPO = '211125735014.dkr.ecr.ap-southeast-1.amazonaws.com/boardgame'
+        AWS_REGION = 'ap-southeast-1'
+        IMAGE_TAG = 'latest'
+        IMAGE_NAME = "${ECR_REPO}:${IMAGE_TAG}"
     }
 
     stages {
-        
-        stage('Compile') {
+
+        stage("Clone Code From GitHub") {
             steps {
-             sh 'mvn compile'
+                git url: 'https://github.com/ittkunal/K8-s-repo-Boardgame.git', branch: 'main'
             }
         }
-        stage('test') {
+
+        stage("Static Code Analysis (SonarQube)") {
             steps {
-                sh 'mvn test'
+                withSonarQubeEnv('Sonar') {
+                    sh """
+                        ${SONAR_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=boardgame \
+                        -Dsonar.projectName=boardgame \
+                        -Dsonar.sources=.
+                    """
+                }
             }
         }
-        stage('Package') {
+
+        stage("Sonar Quality Gate") {
             steps {
-               sh 'mvn package'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
-        stage('Hello') {
+
+        stage("Build with Maven") {
             steps {
-                echo 'Hello World'
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage("Authenticate to ECR") {
+            steps {
+                sh """
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                    docker login --username AWS --password-stdin ${ECR_REPO}
+                """
+            }
+        }
+
+        stage("Docker Build") {
+            steps {
+                sh "docker build -t ${IMAGE_NAME} ."
+            }
+        }
+
+        stage("Scan Docker Image (Trivy)") {
+            steps {
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_NAME}"
+            }
+        }
+
+        stage("Push to ECR") {
+            steps {
+                sh "docker push ${IMAGE_NAME}"
+            }
+        }
+
+        stage("Deploy to Kubernetes") {
+            steps {
+                withCredentials([file(credentialsId: 'kube-creds', variable: 'KUBECONFIG')]) {
+                    sh """
+                        export KUBECONFIG=$KUBECONFIG
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                    """
+                }
             }
         }
     }
