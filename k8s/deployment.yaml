@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: boardgame
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: boardgame
+  template:
+    metadata:
+      labels:
+        app: boardgame
+    spec:
+      containers:
+      - name: boardgame
+        image: 211125735014.dkr.ecr.ap-southeast-1.amazonaws.com/boardgame:latest
+        ports:
+        - containerPort: 8080
+      imagePullSecrets:
+      - name: boardgame-secret
